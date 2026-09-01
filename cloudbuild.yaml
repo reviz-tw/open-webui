@@ -1,0 +1,66 @@
+steps:
+  # 1. Build Open WebUI Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'USE_SLIM=true'
+      - '--build-arg'
+      - 'USE_OLLAMA=false'
+      - '-t'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG}'
+      - '-t'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+    id: 'build-open-webui'
+
+  # 2. Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}'
+    id: 'push-image'
+
+  # 3. Deploy Open WebUI to Cloud Run (connected to Cloud SQL PostgreSQL)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG}'
+      - '--region=${_LOCATION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--min-instances=1'
+      - '--cpu-boost'
+      - '--timeout=300'
+      - '--add-cloudsql-instances=${PROJECT_ID}:${_LOCATION}:${_SQL_INSTANCE}'
+      - '--set-env-vars=DATABASE_URL=postgresql://${_DB_USER}:${_DB_PASSWORD}@/${_DB_NAME}?host=/cloudsql/${PROJECT_ID}:${_LOCATION}:${_SQL_INSTANCE},WEBUI_AUTH=True,ENABLE_SIGNUP=True,ENABLE_OLLAMA_API=False,WEBUI_NAME=全球城市 AI 治理研究平台,WEBUI_SECRET_KEY=${_WEBUI_SECRET_KEY}'
+    id: 'deploy-cloud-run'
+
+images:
+  - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG}'
+  - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:latest'
+
+substitutions:
+  _TAG: 'latest'
+  _LOCATION: 'asia-east1'
+  _REPO_NAME: 'haystack-dev'
+  _IMAGE_NAME: 'open-webui-dev'
+  _SERVICE_NAME: 'open-webui-dev'
+  _SQL_INSTANCE: 'city-rag-sql-dev'
+  _DB_USER: 'rag_user'
+  _DB_PASSWORD: ''
+  _DB_NAME: 'city_governance'
+  _WEBUI_SECRET_KEY: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
