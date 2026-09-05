@@ -24,7 +24,7 @@ steps:
       - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}'
     id: 'push-image'
 
-  # 3. Deploy Open WebUI to Cloud Run (connected to Cloud SQL PostgreSQL)
+  # 3. Deploy Open WebUI to Cloud Run (Serverless, Standalone)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -41,8 +41,7 @@ steps:
       - '--min-instances=1'
       - '--cpu-boost'
       - '--timeout=300'
-      - '--add-cloudsql-instances=${PROJECT_ID}:${_LOCATION}:${_SQL_INSTANCE}'
-      - '--set-env-vars=DATABASE_URL=postgresql://${_DB_USER}:${_DB_PASSWORD}@/${_DB_NAME}?host=/cloudsql/${PROJECT_ID}:${_LOCATION}:${_SQL_INSTANCE},WEBUI_AUTH=True,ENABLE_SIGNUP=True,ENABLE_OLLAMA_API=False,WEBUI_NAME=全球城市 AI 治理研究平台,WEBUI_SECRET_KEY=${_WEBUI_SECRET_KEY}'
+      - '--set-env-vars=WEBUI_AUTH=True,ENABLE_SIGNUP=True,ENABLE_OLLAMA_API=False,WEBUI_NAME=全球城市 AI 治理研究平台,WEBUI_SECRET_KEY=${_WEBUI_SECRET_KEY}'
     id: 'deploy-cloud-run'
 
 images:
@@ -55,11 +54,7 @@ substitutions:
   _REPO_NAME: 'haystack-dev'
   _IMAGE_NAME: 'open-webui-dev'
   _SERVICE_NAME: 'open-webui-dev'
-  _SQL_INSTANCE: 'city-rag-sql-dev'
-  _DB_USER: 'rag_user'
-  _DB_PASSWORD: ''
-  _DB_NAME: 'city_governance'
-  _WEBUI_SECRET_KEY: ''
+  _WEBUI_SECRET_KEY: 'wEbUiGovRag2026SecureSecretKeyToken!'
 
 options:
   logging: CLOUD_LOGGING_ONLY
